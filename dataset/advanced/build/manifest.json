@@ -1,0 +1,200 @@
+{
+  "schema_version": 1,
+  "architecture": "x86_64",
+  "compiler": "x86_64-w64-mingw32-gcc",
+  "samples": {
+    "anti_debug_exec.exe": {
+      "source": "../sources/baseline/anti_debug_exec.c",
+      "technique": "anti_debug_peb_timing_multi_check",
+      "fidelity": "reference_flow",
+      "benchmark_ready": true,
+      "execution_profile": "high_signal_v1",
+      "companions": []
+    },
+    "apc_queue.exe": {
+      "source": "../sources/injection/apc_queue.c",
+      "technique": "early_bird_apc_duplicate",
+      "fidelity": "prototype",
+      "benchmark_ready": false,
+      "companions": []
+    },
+    "api_hash_djb2.exe": {
+      "source": "../sources/resolution/api_hash_djb2.c",
+      "technique": "api_hash_resolution",
+      "fidelity": "support_technique",
+      "benchmark_ready": true,
+      "execution_profile": "high_signal_v1",
+      "companions": []
+    },
+    "atombombing.exe": {
+      "source": "../sources/experimental/atombombing.c",
+      "technique": "atombombing",
+      "fidelity": "prototype_payload_reconstruction_incomplete",
+      "benchmark_ready": false,
+      "companions": []
+    },
+    "classic_dll_injection.exe": {
+      "source": "../sources/injection/classic_dll_injection.c",
+      "technique": "classic_dll_injection",
+      "fidelity": "reference_flow",
+      "benchmark_ready": true,
+      "execution_profile": "high_signal_v1",
+      "companions": [
+        "payload.dll"
+      ]
+    },
+    "crt_inject.exe": {
+      "source": "../sources/injection/crt_inject.c",
+      "technique": "create_remote_thread",
+      "fidelity": "reference_flow",
+      "benchmark_ready": true,
+      "execution_profile": "high_signal_v1",
+      "companions": []
+    },
+    "early_bird.exe": {
+      "source": "../sources/injection/early_bird.c",
+      "technique": "early_bird_apc",
+      "fidelity": "reference_flow",
+      "benchmark_ready": true,
+      "execution_profile": "high_signal_v1",
+      "companions": []
+    },
+    "ekko_sleep.exe": {
+      "source": "../sources/experimental/ekko_sleep.c",
+      "technique": "sleep_obfuscation_rc4_protection",
+      "fidelity": "reference_flow",
+      "benchmark_ready": true,
+      "execution_profile": "high_signal_v1",
+      "companions": []
+    },
+    "hells_gate.exe": {
+      "source": "../sources/experimental/hells_gate.c",
+      "technique": "direct_syscall_halos_gate",
+      "fidelity": "reference_flow",
+      "benchmark_ready": true,
+      "execution_profile": "high_signal_v1",
+      "companions": []
+    },
+    "indirect_syscall.exe": {
+      "source": "../sources/experimental/indirect_syscall.c",
+      "technique": "indirect_syscall_gadget_jump",
+      "fidelity": "reference_flow",
+      "benchmark_ready": true,
+      "execution_profile": "high_signal_v1",
+      "companions": []
+    },
+    "local_exec.exe": {
+      "source": "../sources/baseline/local_exec.c",
+      "technique": "local_rwx_execution",
+      "fidelity": "baseline",
+      "benchmark_ready": true,
+      "execution_profile": "high_signal_v1",
+      "companions": []
+    },
+    "map_view.exe": {
+      "source": "../sources/baseline/map_view.c",
+      "technique": "mapped_section_local_execution",
+      "fidelity": "reference_flow",
+      "benchmark_ready": true,
+      "execution_profile": "high_signal_v1",
+      "companions": []
+    },
+    "mockingjay.exe": {
+      "source": "../sources/experimental/mockingjay.c",
+      "technique": "mockingjay_rwx_module",
+      "fidelity": "reference_flow_high_signal",
+      "benchmark_ready": true,
+      "execution_profile": "high_signal_v1",
+      "companions": [
+        "rwx_module.dll"
+      ]
+    },
+    "module_stomp.exe": {
+      "source": "../sources/experimental/module_stomp.c",
+      "technique": "local_module_entrypoint_stomp",
+      "fidelity": "reference_flow_high_signal",
+      "benchmark_ready": true,
+      "execution_profile": "high_signal_v1",
+      "companions": []
+    },
+    "peb_walk.exe": {
+      "source": "../sources/resolution/peb_walk.c",
+      "technique": "peb_module_resolution",
+      "fidelity": "support_technique",
+      "benchmark_ready": true,
+      "execution_profile": "high_signal_v1",
+      "companions": []
+    },
+    "process_doppelganging.exe": {
+      "source": "../sources/experimental/process_doppelganging.c",
+      "technique": "process_doppelganging_full_execution",
+      "fidelity": "reference_flow",
+      "benchmark_ready": true,
+      "execution_profile": "high_signal_v1",
+      "companions": []
+    },
+    "process_ghosting.exe": {
+      "source": "../sources/experimental/process_ghosting.c",
+      "technique": "process_ghosting_full_execution",
+      "fidelity": "reference_flow",
+      "benchmark_ready": true,
+      "execution_profile": "high_signal_v1",
+      "companions": []
+    },
+    "process_herpaderping.exe": {
+      "source": "../sources/experimental/process_herpaderping.c",
+      "technique": "process_herpaderping_full_execution",
+      "fidelity": "reference_flow",
+      "benchmark_ready": true,
+      "execution_profile": "high_signal_v1",
+      "companions": []
+    },
+    "process_hollow.exe": {
+      "source": "../sources/experimental/process_hollow.c",
+      "technique": "process_hollowing_notepad",
+      "fidelity": "reference_flow_high_signal",
+      "benchmark_ready": true,
+      "execution_profile": "high_signal_v1",
+      "companions": []
+    },
+    "reflective_injection.exe": {
+      "source": "../sources/experimental/reflective_injection.c",
+      "technique": "local_manual_map_dll",
+      "fidelity": "reference_flow",
+      "benchmark_ready": true,
+      "execution_profile": "high_signal_v1",
+      "companions": []
+    },
+    "thread_hijack.exe": {
+      "source": "../sources/injection/thread_hijack.c",
+      "technique": "suspended_thread_context_hijack",
+      "fidelity": "reference_flow",
+      "benchmark_ready": true,
+      "execution_profile": "high_signal_v1",
+      "companions": []
+    },
+    "threadless_inject.exe": {
+      "source": "../sources/experimental/threadless_inject.c",
+      "technique": "local_export_hook",
+      "fidelity": "simulation_not_remote_threadless_injection",
+      "benchmark_ready": false,
+      "companions": []
+    },
+    "timestomp_exec.exe": {
+      "source": "../sources/baseline/timestomp_exec.c",
+      "technique": "timestomp_forensic_evasion",
+      "fidelity": "reference_flow",
+      "benchmark_ready": true,
+      "execution_profile": "high_signal_v1",
+      "companions": []
+    },
+    "unhook_exec.exe": {
+      "source": "../sources/baseline/unhook_exec.c",
+      "technique": "peruns_fart_ntdll_unhooking",
+      "fidelity": "reference_flow",
+      "benchmark_ready": true,
+      "execution_profile": "high_signal_v1",
+      "companions": []
+    }
+  }
+}

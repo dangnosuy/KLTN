@@ -1,0 +1,30 @@
+{
+  "schema_version": 2,
+  "architecture": "x86_64",
+  "research_tracks": [
+    {"id": "api_interception", "status": "partial_local_demo", "legacy": ["threadless_inject.exe"], "evidence": "owned-module redirect plus restore", "scope": "document_only_until_safe_control"},
+    {"id": "representation", "status": "not_started", "legacy": ["api_hash_djb2.exe", "peb_walk.exe"], "evidence": "identical synthetic fixture before and after transformation", "scope": "data_representation_control_only"},
+    {"id": "process_hollowing", "status": "prototype_unverified", "legacy": ["process_hollow.exe"], "evidence": "independent mechanism review and C1 contract", "scope": "archive_pending_review"},
+    {"id": "native_api_resolution", "status": "resolver_only", "legacy": ["hells_gate.exe", "indirect_syscall.exe"], "evidence": "resolved symbol metadata", "scope": "taxonomy_only"},
+    {"id": "manual_mapping", "status": "local_reference_pending_c1", "legacy": ["reflective_injection.exe"], "evidence": "module mapping and entrypoint evidence", "scope": "local_manual_map_only"},
+    {"id": "thread_context", "status": "reference_pending_c1", "legacy": ["thread_hijack.exe"], "evidence": "thread context and completion evidence", "scope": "pilot_seed"},
+    {"id": "file_metadata", "status": "not_started", "legacy": [], "evidence": "before-after metadata on owned fixture", "scope": "owned_fixture_control_only"},
+    {"id": "in_memory_execution", "status": "partial_local_reference", "legacy": ["local_exec.exe", "map_view.exe"], "evidence": "process-local execution evidence", "scope": "local_execution_control_only"},
+    {"id": "debugger_awareness", "status": "not_started", "legacy": [], "evidence": "observation result while fixture still completes", "scope": "observation_control_only"},
+    {"id": "code_signing", "status": "not_started", "legacy": [], "evidence": "verification result for lab-generated certificate", "scope": "lab_certificate_control_only"}
+  ],
+  "programs": [
+    {"id": "local_exec", "role": "seed", "group": "local_exec", "legacy": "local_exec.exe", "technique": "local_memory_execution"},
+    {"id": "map_view", "role": "seed", "group": "map_view", "legacy": "map_view.exe", "technique": "local_section_execution"},
+    {"id": "crt_inject", "role": "seed", "group": "crt_inject", "legacy": "crt_inject.exe", "technique": "remote_thread_execution"},
+    {"id": "early_bird", "role": "seed", "group": "early_bird", "legacy": "early_bird.exe", "technique": "early_bird_apc"},
+    {"id": "thread_hijack", "role": "seed", "group": "thread_hijack", "legacy": "thread_hijack.exe", "technique": "thread_context_redirection"},
+    {"id": "classic_dll_injection", "role": "seed", "group": "classic_dll_injection", "legacy": "classic_dll_injection.exe", "technique": "remote_dll_loading"},
+    {"id": "local_manual_map_dll", "role": "seed", "group": "local_manual_map_dll", "legacy": "reflective_injection.exe", "technique": "local_manual_map_dll"},
+    {"id": "module_stomp", "role": "seed", "group": "module_stomp", "legacy": "module_stomp.exe", "technique": "local_module_entrypoint_overwrite"},
+    {"id": "direct_fixture", "role": "control", "group": "direct_fixture", "source": "programs/direct_fixture.c", "companions": []},
+    {"id": "file_io", "role": "control", "group": "file_io", "source": "programs/file_io.c", "companions": []},
+    {"id": "cooperative_child", "role": "control", "group": "cooperative_child", "source": "programs/cooperative_child.c", "companions": []},
+    {"id": "normal_dll", "role": "control", "group": "normal_dll", "source": "programs/normal_dll.c", "companions": ["fixture.dll"]}
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "binary": "tigress",
+  "environment": "x86_64:Linux:Gcc:4.6",
+  "driver_args": [
+    "--Compiler=x86_64-w64-mingw32-gcc",
+    "-D_X86INTRIN_H_INCLUDED",
+    "-D_EMMINTRIN_H_INCLUDED"
+  ],
+  "functions": ["main"],
+  "operators": [
+    {
+      "name": "flatten",
+      "args": ["--Transform=Flatten", "--Functions={functions}"]
+    },
+    {
+      "name": "encode_arithmetic",
+      "args": ["--Transform=EncodeArithmetic", "--Functions={functions}"]
+    },
+    {
+      "name": "split",
+      "args": ["--Transform=Split", "--Functions={functions}"]
+    }
+  ]
+}

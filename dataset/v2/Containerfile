@@ -1,0 +1,5 @@
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends mingw-w64 python3 && rm -rf /var/lib/apt/lists/*
+ENV SOURCE_DATE_EPOCH=1704067200 PYTHONDONTWRITEBYTECODE=1
+WORKDIR /src
+ENTRYPOINT ["python3", "dataset/v2/manage.py"]

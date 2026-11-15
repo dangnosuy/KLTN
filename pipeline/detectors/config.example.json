@@ -1,0 +1,26 @@
+{
+  "output_dir": "pipeline/reports/detectors",
+  "static": {
+    "python": "${HOME}/Documents/venv/bin/python3",
+    "timeout": 120,
+    "ember_model": "Signature-base/ML-based/EMBER2024/ember2024_models/EMBER2024_PE.model",
+    "malconv_model": "Signature-base/ML-based/malconv/Reference/ember-malconv/malconv.h5",
+    "ember_threshold": 0.5,
+    "malconv_threshold": 0.5
+  },
+  "defender": {
+    "snapshot": "normal_real",
+    "staging_dir": "C:\\DetectorScans",
+    "timeout": 180
+  },
+  "cape": {
+    "url": "http://localhost:8000",
+    "machine": "",
+    "threshold": 4.0,
+    "analysis_timeout": 120,
+    "timeout": 900,
+    "poll_interval": 10,
+    "request_timeout": 15,
+    "verify_tls": true
+  }
+}

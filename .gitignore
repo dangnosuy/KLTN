@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# Environment and Secrets
+*.env
+*.env.*
+!*.env.example
+*.key
+*.pem
+*token*
+*password*
+huntress_backup_codes.txt
+
+# Run logs and test outputs
+*.log
+pipeline/reports/
+pipeline/vmrun_reports/
+pipeline/runtime/
+heuristic-output/
+bandit-output/
+ga-output/
+single-agent-output/
+
+# Heldout heavy tools and caches
+heldout/.tools/
+heldout/reports/
+
+# OS and Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
