@@ -1,0 +1,117 @@
+{
+  "benchmark": "Proposed Method (C2 + NSGA-II + Qwen 3.8-27b Reflexion)",
+  "engines": ["clamav", "ember", "malconv", "cape"],
+  "results": {
+    "local_exec_xor": {
+      "technique": "Local RWX Memory Execution",
+      "original": {
+        "clamav": "NO_ALERT",
+        "ember": 0.8020,
+        "malconv": 6.91e-10,
+        "cape": 8.9,
+        "fitness": 0.5770
+      },
+      "proposed_qwen": {
+        "clamav": "NO_ALERT",
+        "ember": 0.7011,
+        "malconv": 1.06e-11,
+        "cape": 8.9,
+        "fitness": 0.6022,
+        "origin": "llm_stagnation_code"
+      }
+    },
+    "map_view_xor": {
+      "technique": "Mapped Section Execution",
+      "original": {
+        "clamav": "NO_ALERT",
+        "ember": 0.7772,
+        "malconv": 1.25e-09,
+        "cape": 8.5,
+        "fitness": 0.5877
+      },
+      "proposed_qwen": {
+        "clamav": "NO_ALERT",
+        "ember": 0.6944,
+        "malconv": 2.19e-12,
+        "cape": 3.4,
+        "cape_verdict": "NO_ALERT (BYPASS)",
+        "fitness": 0.7414,
+        "origin": "llm_stagnation_code"
+      }
+    },
+    "unhook_exec_xor": {
+      "technique": "NTDLL Unhooking (Perun's Fart)",
+      "original": {
+        "clamav": "NO_ALERT",
+        "ember": 0.8538,
+        "malconv": 8.26e-11,
+        "cape": 10.0,
+        "fitness": 0.5366
+      },
+      "proposed_qwen": {
+        "clamav": "NO_ALERT",
+        "ember": 0.6401,
+        "malconv": 4.75e-09,
+        "cape": 10.0,
+        "fitness": 0.5900,
+        "origin": "llm_stagnation_code"
+      }
+    },
+    "process_hollow": {
+      "technique": "Process Hollowing Notepad",
+      "original": {
+        "clamav": "NO_ALERT",
+        "ember": 0.7668,
+        "malconv": 5.87e-13,
+        "cape": 6.0,
+        "fitness": 0.6583
+      },
+      "proposed_qwen": {
+        "clamav": "NO_ALERT",
+        "ember": 0.6576,
+        "malconv": 4.09e-11,
+        "cape": 2.4,
+        "cape_verdict": "NO_ALERT (BYPASS)",
+        "fitness": 0.7756,
+        "origin": "llm_stagnation_code"
+      }
+    },
+    "classic_dll_injection": {
+      "technique": "Classic DLL Injection (with companion payload.dll)",
+      "original": {
+        "clamav": "NO_ALERT",
+        "ember": 0.8316,
+        "malconv": 1.09e-10,
+        "cape": 4.3,
+        "fitness": 0.6846
+      },
+      "proposed_qwen": {
+        "clamav": "NO_ALERT",
+        "ember": 0.5792,
+        "malconv": 3.29e-11,
+        "cape": 0.2,
+        "cape_verdict": "NO_ALERT (BYPASS)",
+        "fitness": 0.8502,
+        "origin": "llm_stagnation_code"
+      }
+    },
+    "reflective_injection": {
+      "technique": "Reflective DLL Injection (PE Manual Mapping)",
+      "original": {
+        "clamav": "NO_ALERT",
+        "ember": 0.9576,
+        "malconv": 3.34e-11,
+        "cape": 7.8,
+        "fitness": 0.5656
+      },
+      "proposed_qwen": {
+        "clamav": "NO_ALERT",
+        "ember": 0.9576,
+        "malconv": 3.34e-11,
+        "cape": 7.8,
+        "fitness": 0.5656,
+        "origin": "initial"
+      }
+    }
+  }
+}
