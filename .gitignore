@@ -27,6 +27,16 @@ heuristic-output/
 bandit-output/
 ga-output/
 single-agent-output/
+baseline_results/
+hybrid-fixed-output/
+
+# Graphify & Large binaries
+graphify-out/
+pipeline/detectors/graphify-out/
+*.iso
+*.pdf
+*.dll
+*.exe
 
 # Heldout heavy tools and caches
 heldout/.tools/

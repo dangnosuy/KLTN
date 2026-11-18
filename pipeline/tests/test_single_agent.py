@@ -5,6 +5,7 @@ from pathlib import Path
 
 from pipeline.single_agent.__main__ import detector_success
 from pipeline.single_agent.algorithm import ReflexionConfig, ReflexionRunner, extract_c_code
+from pipeline.single_agent.openai_compatible import decode_json_response
 
 
 def feedback(detected):
@@ -59,6 +60,7 @@ class SingleAgentTests(unittest.TestCase):
             self.assertIn("return 0", (root / "output" / "best.c").read_text())
             self.assertIn("return 1", model.calls[2][1])
             self.assertIn("preserve the original", model.calls[2][1])
+            self.assertIn("delta_from_baseline", model.calls[1][1])
             self.assertEqual(len((root / "output" / "attempts.jsonl").read_text().splitlines()), 2)
             self.assertEqual(len((root / "output" / "reflections.jsonl").read_text().splitlines()), 1)
 
@@ -81,6 +83,28 @@ class SingleAgentTests(unittest.TestCase):
     def test_code_block_extraction_and_build_failure(self):
         self.assertEqual(extract_c_code("```c\nint x;\n```"), "int x;\n")
         self.assertFalse(detector_success("ember")({"build": "BUILD_FAIL"}))
+
+    def test_openai_compatible_response_ignores_done_suffix(self):
+        document = decode_json_response('{"choices": []}data: [DONE]\n')
+        self.assertEqual(document, {"choices": []})
+
+    def test_local_quoted_header_is_added_to_initial_prompt(self):
+        with tempfile.TemporaryDirectory(dir=Path.cwd()) as temporary:
+            root = Path(temporary)
+            (root / "payload.h").write_text("unsigned char payload[] = {1, 2};\n", encoding="utf-8")
+            source = root / "input.c"
+            source.write_text('#include "payload.h"\nint main(void) { return payload[0]; }\n', encoding="utf-8")
+            context = ReflexionRunner._local_header_context(source)
+            self.assertIn("unsigned char payload[]", context)
+            self.assertIn(context, ReflexionRunner._initial_prompt(source.read_text(), context))
+            self.assertIn(context, ReflexionRunner._revision_prompt(source.read_text(), source.read_text(), {}, "retry", context))
+
+            output = root / "output"
+            attempts = output / "attempts"
+            attempts.mkdir(parents=True)
+            staged = ReflexionRunner._stage_local_headers(source, attempts, output)
+            self.assertEqual(len(staged), 1)
+            self.assertEqual((attempts / "payload.h").read_text(), "unsigned char payload[] = {1, 2};\n")
 
 
 if __name__ == "__main__":

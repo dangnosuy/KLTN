@@ -1,0 +1,319 @@
+from __future__ import annotations
+
+import json
+import math
+import random
+import shutil
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Callable
+
+from pipeline.ga_only.algorithm import GAConfig, GARunner
+from pipeline.ga_only.operators import Gene, TigressPool
+
+
+LLM_SYSTEM = """You design operator recipes for a defensive C detector benchmark.
+Return exactly one JSON object with keys "thought" and "genes". "thought" is a
+short natural-language design rationale. "genes" is the complete executable recipe
+and may use only the operator names supplied by the user. Do not return C code,
+markdown, additional keys, or explanations outside the JSON object."""
+
+STRATEGIES = (
+    ("E1", "Explore a recipe as different as possible from the selected parents."),
+    ("E2", "Identify a useful common idea in the parents, then produce a different recipe based on it."),
+    ("M1", "Modify one selected parent recipe to improve its fitness."),
+    ("M2", "Keep the main recipe structure but tune operator choices, order, or seeds."),
+    ("M3", "Simplify one parent by replacing redundant genes with noop where appropriate."),
+    ("M4", "Combine complementary operators targeting different detector features: data encoding (encode_literals) + control flow (flatten, split) + virtualization (virtualize)."),
+)
+
+Generate = Callable[[str, str, float], str]
+Evaluator = Callable[[Path], tuple[float, dict]]
+
+
+@dataclass(frozen=True)
+class FixedHybridConfig:
+    ga: GAConfig = field(default_factory=GAConfig)
+    llm_fraction: float = 0.25
+    parent_count: int = 5
+
+    def __post_init__(self):
+        if isinstance(self.llm_fraction, bool) or not isinstance(self.llm_fraction, (int, float)) or not 0 < self.llm_fraction <= 1:
+            raise ValueError("llm_fraction must be within (0, 1]")
+        if isinstance(self.parent_count, bool) or not isinstance(self.parent_count, int) or self.parent_count <= 0:
+            raise ValueError("parent_count must be a positive integer")
+        if self.ga.max_evaluations < self.ga.population_size:
+            raise ValueError("max_evaluations must cover the initial population")
+
+    @property
+    def llm_offspring(self) -> int:
+        return max(1, round(self.ga.population_size * self.llm_fraction))
+
+
+@dataclass
+class HybridHeuristic:
+    genes: tuple[Gene, ...]
+    thought: str
+    origin: str
+    strategy: str
+    fitness: float | None = None
+    source: str | None = None
+    evaluation: dict | None = None
+
+
+def parse_llm_heuristic(response: str, operators: set[str], chromosome_length: int) -> tuple[str, tuple[Gene, ...]]:
+    if not isinstance(response, str):
+        raise ValueError("LLM response must be text")
+    start = response.find("{")
+    if start < 0:
+        raise ValueError("LLM response does not contain a JSON object")
+    try:
+        document, _ = json.JSONDecoder().raw_decode(response[start:])
+    except json.JSONDecodeError as error:
+        raise ValueError("LLM returned invalid JSON") from error
+    if not isinstance(document, dict) or not {"thought", "genes"}.issubset(document.keys()):
+        raise ValueError("LLM JSON must contain thought and genes")
+    thought, raw_genes = document["thought"], document["genes"]
+    if not isinstance(thought, str) or not thought.strip():
+        raise ValueError("LLM thought must be non-empty text")
+    if not isinstance(raw_genes, list) or len(raw_genes) != chromosome_length:
+        raise ValueError(f"LLM must return exactly {chromosome_length} genes")
+    genes = []
+    for item in raw_genes:
+        if not isinstance(item, dict) or not {"operator", "seed"}.issubset(item.keys()):
+            raise ValueError("Each LLM gene must contain operator and seed")
+        operator, seed = item["operator"], item["seed"]
+        if operator not in operators | {"noop"}:
+            raise ValueError(f"LLM selected unknown operator: {operator}")
+        if isinstance(seed, bool) or not isinstance(seed, (int, float)):
+            raise ValueError("LLM gene seed must be an integer within [0, 2^31)")
+        seed = abs(int(seed)) % (2**31)
+        if operator == "noop":
+            seed = 0
+        genes.append(Gene(operator, seed))
+    return thought.strip(), tuple(genes)
+
+
+class FixedHybridRunner:
+    def __init__(
+        self,
+        pool: TigressPool,
+        evaluator: Evaluator,
+        generate: Generate,
+        config: FixedHybridConfig | None = None,
+    ):
+        self.pool = pool
+        self.generate = generate
+        self.config = config or FixedHybridConfig()
+        self.ga = GARunner(pool, evaluator, self.config.ga)
+        self.random = random.Random(self.config.ga.seed)
+        self.llm_calls = 0
+        self._strategy_cursor = 0
+
+    def _random_heuristic(self, strategy: str = "GA") -> HybridHeuristic:
+        individual = self.ga._individual()
+        return HybridHeuristic(individual.genes, "Generated by GA operators.", "ga", strategy)
+
+    def _rank_select(self, population: list[HybridHeuristic], count: int) -> list[HybridHeuristic]:
+        ranked = sorted(population, key=lambda item: item.fitness, reverse=True)
+        weights = [1 / (rank + len(ranked)) for rank in range(1, len(ranked) + 1)]
+        return self.random.choices(ranked, weights=weights, k=min(count, len(ranked)))
+
+    def _llm_prompt(self, source: str, strategy: str, instruction: str, parents: list[HybridHeuristic]) -> str:
+        parent_records = [
+            {
+                "thought": parent.thought,
+                "genes": [asdict(gene) for gene in parent.genes],
+                "fitness": parent.fitness,
+                "evaluation": parent.evaluation,
+            }
+            for parent in parents
+        ]
+        return f"""Design one heuristic for the fixed-schedule hybrid population.
+
+[strategy]
+{strategy}: {instruction}
+
+[operator catalog and characteristics]
+- flatten: flattens control flow into switch-dispatch loop (disrupts CFG/basic block analysis)
+- encode_arithmetic: replaces arithmetic with complex identity expressions (lowers signature match)
+- split: divides statements into sub-blocks/helper structures
+- encode_literals: encrypts strings and literal constants with runtime decryption (hides static strings/signatures)
+- virtualize: translates function body into custom bytecode VM interpreter (radically transforms PE structure and control flow)
+
+[constraints]
+available operators: {json.dumps(sorted(self.pool.operators))}
+noop is allowed only as {{"operator":"noop","seed":0}}
+gene count: {self.config.ga.chromosome_length}
+seed range: 0 to {2**31 - 1}
+
+[original C source; use only to reason about operator suitability]
+```c
+{source.rstrip()}
+```
+
+[selected parent heuristics]
+{json.dumps(parent_records, indent=2, ensure_ascii=False)}
+"""
+
+    def _call_llm(
+        self,
+        source: str,
+        strategy: str,
+        instruction: str,
+        parents: list[HybridHeuristic],
+    ) -> HybridHeuristic:
+        self.llm_calls += 1
+        response = self.generate(LLM_SYSTEM, self._llm_prompt(source, strategy, instruction, parents), 0.7)
+        thought, genes = parse_llm_heuristic(response, set(self.pool.operators), self.config.ga.chromosome_length)
+        return HybridHeuristic(genes, thought, "llm", strategy)
+
+    def _ga_children(self, population: list[HybridHeuristic], count: int) -> list[HybridHeuristic]:
+        children = []
+        while len(children) < count:
+            left = self.ga._tournament(population)
+            right = self.ga._tournament(population)
+            first, second = self.ga._crossover(left, right)
+            for child in (self.ga._mutate(first), self.ga._mutate(second)):
+                children.append(HybridHeuristic(child.genes, "Generated by GA crossover/mutation.", "ga", "GA"))
+                if len(children) == count:
+                    break
+        return children
+
+    def _evaluate(
+        self,
+        population: list[HybridHeuristic],
+        original: Path,
+        output: Path,
+        generation: int,
+        evaluation_log,
+    ) -> list[HybridHeuristic]:
+        directory = output / "candidates" / f"generation-{generation:03d}"
+        evaluated = []
+        for index, heuristic in enumerate(population):
+            candidate = directory / f"candidate-{index:03d}.c"
+            try:
+                self.ga._evaluate(heuristic, original, candidate)
+            except StopIteration:
+                break
+            except Exception as error:
+                heuristic.fitness = float("-inf")
+                heuristic.source = str(candidate)
+                heuristic.evaluation = {"status": "TRANSFORM_ERROR", "error": str(error)}
+            evaluated.append(heuristic)
+            record = {
+                "generation": generation,
+                "candidate": index,
+                "origin": heuristic.origin,
+                "strategy": heuristic.strategy,
+                "thought": heuristic.thought,
+                "genes": [asdict(gene) for gene in heuristic.genes],
+                "fitness": heuristic.fitness if math.isfinite(heuristic.fitness) else None,
+                "source": heuristic.source,
+                "evaluation": heuristic.evaluation,
+            }
+            evaluation_log.write(json.dumps(record, ensure_ascii=False, allow_nan=False) + "\n")
+            evaluation_log.flush()
+        return evaluated
+
+    @staticmethod
+    def _validate_paths(source: Path, output: Path) -> tuple[Path, Path]:
+        source, output = Path(source).resolve(), Path(output).resolve()
+        if not source.is_file() or source.suffix.lower() != ".c":
+            raise ValueError(f"Expected an existing .c source: {source}")
+        if output.exists() and (not output.is_dir() or any(output.iterdir())):
+            raise ValueError(f"Output directory must be an empty directory: {output}")
+        return source, output
+
+    def run(self, source: Path, output: Path) -> dict:
+        source, output = self._validate_paths(source, output)
+        output.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, output / "original.c")
+        source_text = source.read_text(encoding="utf-8")
+        llm_quota = self.config.llm_offspring
+        history = []
+        llm_records = []
+
+        with (output / "evaluations.jsonl").open("w", encoding="utf-8") as evaluation_log, \
+             (output / "llm_heuristics.jsonl").open("w", encoding="utf-8") as llm_log:
+            population = [self._random_heuristic() for _ in range(self.config.ga.population_size - llm_quota)]
+            for _ in range(llm_quota):
+                try:
+                    heuristic = self._call_llm(source_text, "I", "Create an initial operator recipe.", [])
+                    record = {"generation": 0, "status": "OK", "strategy": "I", "thought": heuristic.thought, "genes": [asdict(gene) for gene in heuristic.genes]}
+                    population.append(heuristic)
+                except Exception as error:
+                    record = {"generation": 0, "status": "ERROR", "strategy": "I", "error": str(error)}
+                    population.append(self._random_heuristic("LLM_FALLBACK"))
+                llm_records.append(record)
+                llm_log.write(json.dumps(record, ensure_ascii=False) + "\n")
+                llm_log.flush()
+
+            population = self._evaluate(population, source, output, 0, evaluation_log)
+            if not population or all(item.fitness == float("-inf") for item in population):
+                raise RuntimeError("No candidate could be transformed and evaluated")
+            best = max(population, key=lambda item: item.fitness)
+            history.append({"generation": 0, "best_fitness": best.fitness, "evaluations": self.ga.evaluations, "llm_calls": self.llm_calls})
+
+            for generation in range(1, self.config.ga.generations + 1):
+                remaining = self.config.ga.max_evaluations - self.ga.evaluations
+                if remaining <= 0:
+                    break
+                generation_size = min(self.config.ga.population_size, remaining)
+                scheduled_llm = min(llm_quota, generation_size)
+                children = self._ga_children(population, generation_size - scheduled_llm)
+                for _ in range(scheduled_llm):
+                    strategy, instruction = STRATEGIES[self._strategy_cursor % len(STRATEGIES)]
+                    self._strategy_cursor += 1
+                    parent_count = self.config.parent_count if strategy in {"E1", "E2"} else 1
+                    parents = self._rank_select(population, parent_count)
+                    try:
+                        heuristic = self._call_llm(source_text, strategy, instruction, parents)
+                        record = {"generation": generation, "status": "OK", "strategy": strategy, "thought": heuristic.thought, "genes": [asdict(gene) for gene in heuristic.genes]}
+                        children.append(heuristic)
+                    except Exception as error:
+                        record = {"generation": generation, "status": "ERROR", "strategy": strategy, "error": str(error)}
+                        children.append(self._random_heuristic("LLM_FALLBACK"))
+                    llm_records.append(record)
+                    llm_log.write(json.dumps(record, ensure_ascii=False) + "\n")
+                    llm_log.flush()
+
+                evaluated = self._evaluate(children, source, output, generation, evaluation_log)
+                if not evaluated:
+                    break
+                population = sorted(population + evaluated, key=lambda item: item.fitness, reverse=True)[:self.config.ga.population_size]
+                if population[0].fitness > best.fitness:
+                    best = population[0]
+                history.append({
+                    "generation": generation,
+                    "best_fitness": best.fitness,
+                    "evaluations": self.ga.evaluations,
+                    "llm_calls": self.llm_calls,
+                    "scheduled_llm_offspring": scheduled_llm,
+                })
+
+        if not best.source:
+            raise RuntimeError("No valid best candidate was produced")
+        best_source = output / "best.c"
+        shutil.copyfile(best.source, best_source)
+        result = {
+            "baseline": "hybrid-fixed-eoh",
+            "input": str(source),
+            "best_source": str(best_source),
+            "best_fitness": best.fitness,
+            "best_origin": best.origin,
+            "best_strategy": best.strategy,
+            "best_thought": best.thought,
+            "best_genes": [asdict(gene) for gene in best.genes if gene.operator != "noop"],
+            "best_evaluation": best.evaluation,
+            "evaluations": self.ga.evaluations,
+            # shortcut: the shared client exposes text only; add API usage accounting when token budgets are enforced.
+            "llm_calls": self.llm_calls,
+            "fixed_llm_offspring": llm_quota,
+            "history": history,
+            "config": {"ga": asdict(self.config.ga), "llm_fraction": self.config.llm_fraction, "parent_count": self.config.parent_count},
+            "evaluations_file": str(output / "evaluations.jsonl"),
+            "llm_heuristics_file": str(output / "llm_heuristics.jsonl"),
+        }
+        (output / "result.json").write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        return result

@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from pipeline.ga_only.algorithm import GAConfig, GARunner
+from pipeline.ga_only.__main__ import command_evaluator
 from pipeline.ga_only.operators import Gene, TigressPool
 from pipeline.ga_only.static_score import score_source
 
@@ -33,6 +34,13 @@ class FakePool:
 
 
 class GAOnlyTests(unittest.TestCase):
+    def test_score_command_expands_home_directory(self):
+        completed = subprocess.CompletedProcess([], 0, '{"fitness": 0.5}', "")
+        with patch("pipeline.ga_only.__main__.subprocess.run", return_value=completed) as invoked:
+            fitness, _ = command_evaluator("~/venv/bin/python {source}")(Path("candidate.c"))
+        self.assertEqual(fitness, 0.5)
+        self.assertEqual(invoked.call_args.args[0][0], str(Path("~/venv/bin/python").expanduser()))
+
     def test_pool_runs_tigress_chain(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -104,6 +112,62 @@ class GAOnlyTests(unittest.TestCase):
             self.assertEqual(result["build"], "PASSED")
             self.assertAlmostEqual(result["fitness"], 0.9)
             self.assertEqual(result["detectors"]["ember"]["score"], 0.2)
+
+    def test_static_score_compiles_and_combines_three_engines(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "input.c"
+            source.write_text("int main(void) { return 0; }\n", encoding="utf-8")
+
+            def compile_candidate(command, **kwargs):
+                Path(command[-1]).write_bytes(b"MZ test")
+                return subprocess.CompletedProcess(command, 0, "", "")
+
+            def scan(_scanner, engine, _artifact):
+                if engine == "ember":
+                    return {"status": "COMPLETED", "verdict": "NO_ALERT", "detected": False, "score": 0.2, "threshold": 0.5}
+                if engine == "malconv":
+                    return {"status": "COMPLETED", "verdict": "NO_ALERT", "detected": False, "score": 0.1, "threshold": 0.5}
+                return {"status": "COMPLETED", "verdict": "NO_ALERT", "detected": False, "threat_names": []}
+
+            with patch("pipeline.ga_only.static_score.shutil.which", return_value="compiler"), \
+                 patch("pipeline.ga_only.static_score.subprocess.run", side_effect=compile_candidate), \
+                 patch("pipeline.ga_only.static_score.StaticScanner.scan", new=scan):
+                result = score_source(source, engines=("clamav", "ember", "malconv"))
+
+            self.assertEqual(result["build"], "PASSED")
+            # (1.0 + 0.8 + 0.9) / 3 = 0.9
+            self.assertAlmostEqual(result["fitness"], 0.9)
+            self.assertEqual(result["detectors"]["malconv"]["score"], 0.1)
+
+    def test_static_score_compiles_and_combines_with_cape(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "input.c"
+            source.write_text("int main(void) { return 0; }\n", encoding="utf-8")
+
+            def compile_candidate(command, **kwargs):
+                Path(command[-1]).write_bytes(b"MZ test")
+                return subprocess.CompletedProcess(command, 0, "", "")
+
+            def scan_static(_scanner, engine, _artifact):
+                if engine == "ember":
+                    return {"status": "COMPLETED", "verdict": "NO_ALERT", "detected": False, "score": 0.2, "threshold": 0.5}
+                return {"status": "COMPLETED", "verdict": "NO_ALERT", "detected": False, "threat_names": []}
+
+            def scan_cape(_scanner, _sample, _directory):
+                return {"status": "COMPLETED", "verdict": "NO_ALERT", "detected": False, "score": 1.0, "threshold": 4.0}
+
+            with patch("pipeline.ga_only.static_score.shutil.which", return_value="compiler"), \
+                 patch("pipeline.ga_only.static_score.subprocess.run", side_effect=compile_candidate), \
+                 patch("pipeline.ga_only.static_score.StaticScanner.scan", new=scan_static), \
+                 patch("pipeline.detectors.cape.CapeScanner.scan", new=scan_cape):
+                result = score_source(source, engines=("clamav", "ember", "cape"))
+
+            self.assertEqual(result["build"], "PASSED")
+            # clamav: 1.0, ember: 0.8, cape: 1.0 - (1.0 / 10.0) = 0.9 -> (1.0 + 0.8 + 0.9) / 3 = 0.9
+            self.assertAlmostEqual(result["fitness"], 0.9)
+            self.assertEqual(result["detectors"]["cape"]["score"], 1.0)
 
 
 if __name__ == "__main__":

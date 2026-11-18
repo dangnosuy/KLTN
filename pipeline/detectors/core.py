@@ -9,6 +9,7 @@ import struct
 from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
+import sys
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -193,4 +194,4 @@ def probability(value, threshold):
 
 
 def log(message):
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] {message}", flush=True)
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] {message}", file=sys.stderr, flush=True)

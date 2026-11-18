@@ -17,6 +17,7 @@ from pipeline.detectors.core import DEFAULTS, ENGINES, digest, failed, load_conf
 from pipeline.detectors.defender import DefenderScanner, parse_scan, validate_health
 from pipeline.detectors.runner import DetectorRunner, aggregate, lock
 from pipeline.detectors.static import StaticScanner, parse_clamav
+from pipeline.detectors.vmware import VMwareSettings, VMwareTransport
 
 
 def make_exe(path, extra=b""):
@@ -131,6 +132,16 @@ class StaticTests(unittest.TestCase):
 
 
 class DefenderTests(unittest.TestCase):
+    def test_vmware_transport_keeps_guest_credentials_outside_host_commands(self):
+        settings = VMwareSettings(Path("/tmp/test.vmx"), "guest", "secret", "vm-secret", 1)
+        transport = VMwareTransport(settings)
+        host_command = transport._command("listSnapshots")
+        guest_command = transport._command("checkToolsState", guest=True)
+        self.assertNotIn("guest", host_command)
+        self.assertNotIn("secret", host_command)
+        self.assertIn("guest", guest_command)
+        self.assertIn("secret", guest_command)
+
     def health(self):
         return {"service_enabled": True, "antivirus_enabled": True, "scanner": "C:\\Trusted\\MpCmdRun.exe", "maps_reporting": 0, "sample_consent": 2, "block_at_first_seen_disabled": True, "exclusions": ["C:\\DetectorScans"], "engine_version": "1", "signature_version": "2", "platform_version": "3"}
 

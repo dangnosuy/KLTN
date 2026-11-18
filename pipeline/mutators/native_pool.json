@@ -1,0 +1,15 @@
+{
+  "type": "native",
+  "binary": "native",
+  "environment": "native",
+  "functions": ["main"],
+  "operators": [
+    {"name": "dynamic_api"},
+    {"name": "benign_workload"},
+    {"name": "benign_iat"},
+    {"name": "stack_strings"},
+    {"name": "opaque_predicate"},
+    {"name": "variable_renaming"},
+    {"name": "clean_strip"}
+  ]
+}

@@ -62,9 +62,10 @@ Hash package thay đổi nếu tên hoặc nội dung bất kỳ artifact nào t
 
 Mọi đường dẫn tương đối trong config được tính từ root workspace, không từ vị trí
 file JSON. `--config` nhận cấu hình đầy đủ hoặc chỉ các trường muốn thay đổi.
-Credentials không có trong JSON; dùng biến môi trường hiện có:
-`VMRUN_VMX`, `VM_GUEST_USER`, `VM_GUEST_PASSWORD`, `VMRUN_VM_PASSWORD` nếu VM
-mã hóa, và `CAPE_API_TOKEN` nếu CAPE bật token authentication.
+Credentials không có trong JSON; Defender dùng `VMRUN_VMX`, `VM_GUEST_USER`,
+`VM_GUEST_PASSWORD`, `VMRUN_VM_PASSWORD` nếu VM mã hóa, và CAPE dùng
+`CAPE_API_TOKEN` nếu bật token authentication. Defender dùng transport VMware tối
+giản nội bộ; không gọi Elastic hoặc Wazuh.
 
 ## Chuẩn bị Defender offline
 
@@ -104,7 +105,7 @@ Chạy từ root workspace:
 
 ```bash
 source ~/Documents/venv/bin/activate
-source pipeline/vmrun.env.example
+source pipeline/detectors/vmware.env.example
 python3 -m pipeline.detectors doctor --config pipeline/detectors/config.example.json
 python3 -m pipeline.detectors run dataset/advanced/build/crt_inject.exe \
   --config pipeline/detectors/config.example.json --campaign thesis-r01

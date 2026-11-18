@@ -33,6 +33,9 @@ class TigressPool:
     @classmethod
     def load(cls, path: Path) -> "TigressPool":
         document = json.loads(Path(path).read_text(encoding="utf-8"))
+        if isinstance(document, dict) and (document.get("type") == "native" or document.get("binary") == "native"):
+            from pipeline.mutators.pool import NativePool
+            return NativePool.load(path)
         required = {"binary", "environment", "functions", "operators"}
         if not isinstance(document, dict) or not required <= set(document) or set(document) - required - {"driver_args"}:
             raise ValueError("Operator pool must contain binary, environment, functions, and operators")
@@ -90,10 +93,51 @@ class TigressPool:
 
         trace = []
         with tempfile.TemporaryDirectory(prefix="ga-tigress-") as temporary:
-            current = source
+            # Recreate source directory structure so relative ../ includes work
+            temp_root = Path(temporary)
+            src_dir = temp_root / "sub"
+            src_dir.mkdir(parents=True, exist_ok=True)
+            staged_source = src_dir / source.name
+
+            source_text = source.read_text(encoding="utf-8", errors="replace")
+            # Only inject runtime helper headers if an operator specifically requires them (e.g. encode_literals needs InitOpaque)
+            needs_opaque_headers = any(gene.operator == "encode_literals" for gene in active)
+            required_headers = []
+            if needs_opaque_headers:
+                if "#include <time.h>" not in source_text:
+                    required_headers.append("#include <time.h>")
+                if "#include <pthread.h>" not in source_text:
+                    required_headers.append("#include <pthread.h>")
+            if required_headers:
+                source_text = "\n".join(required_headers) + "\n" + source_text
+            staged_source.write_text(source_text, encoding="utf-8")
+
+            # Mirror sibling directories and files from source.parent and source.parent.parent
+            for item in source.parent.iterdir():
+                if item.name == source.name:
+                    continue
+                target = src_dir / item.name
+                if item.is_dir():
+                    shutil.copytree(item, target, dirs_exist_ok=True)
+                elif item.is_file():
+                    shutil.copyfile(item, target)
+
+            # If source uses ../ references, mirror siblings of source.parent as well
+            if "../" in source_text:
+                parent_dir = source.parent.parent
+                for item in parent_dir.iterdir():
+                    if item.name == source.parent.name:
+                        continue
+                    target = temp_root / item.name
+                    if item.is_dir():
+                        shutil.copytree(item, target, dirs_exist_ok=True)
+                    elif item.is_file():
+                        shutil.copyfile(item, target)
+
+            current = staged_source
             for index, gene in enumerate(active):
                 operator = self.operators[gene.operator]
-                output = Path(temporary) / f"stage-{index:02d}.c"
+                output = src_dir / f"stage-{index:02d}.c"
                 replacements = {"functions": ",".join(self.functions), "seed": str(gene.seed)}
                 args = [arg.format_map(replacements) for arg in operator.args]
                 command = [
@@ -105,7 +149,7 @@ class TigressPool:
                     f"--out={output}",
                     str(current),
                 ]
-                process = subprocess.run(command, capture_output=True, text=True, timeout=300)
+                process = subprocess.run(command, cwd=src_dir, capture_output=True, text=True, timeout=300)
                 if process.returncode or not output.is_file():
                     message = (process.stderr or process.stdout or "Tigress produced no output").strip()
                     raise RuntimeError(f"Operator {gene.operator} failed: {message[-1500:]}")

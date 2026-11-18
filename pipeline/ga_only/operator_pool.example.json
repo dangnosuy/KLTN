@@ -19,6 +19,22 @@
     {
       "name": "split",
       "args": ["--Transform=Split", "--Functions={functions}"]
+    },
+    {
+      "name": "encode_literals",
+      "args": ["--Transform=InitOpaque", "--Functions={functions}", "--Transform=EncodeLiterals", "--Functions={functions}"]
+    },
+    {
+      "name": "virtualize",
+      "args": ["--Transform=Virtualize", "--Functions={functions}"]
+    },
+    {
+      "name": "copy",
+      "args": ["--Transform=Copy", "--Functions={functions}"]
+    },
+    {
+      "name": "clean_up",
+      "args": ["--Transform=CleanUp", "--Functions={functions}"]
     }
   ]
 }

@@ -5,10 +5,10 @@ import re
 import subprocess
 import time
 import uuid
-import warnings
 from pathlib import Path
 
 from .core import failed, log, result
+from .vmware import VMwareSettings, VMwareTransport, json_document_from_output
 
 
 def ps_quote(value):
@@ -52,15 +52,11 @@ class DefenderScanner:
 
     def transport(self):
         if self.vm is None:
-            # Restore the warning filters changed by the legacy transport import.
-            with warnings.catch_warnings():
-                from pipeline.vmrun_pipeline import Settings, VMRun
-            self.vm = VMRun(Settings.from_env())
+            self.vm = VMwareTransport(VMwareSettings.from_env())
         return self.vm
 
     def health(self):
         vm = self.transport()
-        from pipeline.vmrun_pipeline import json_document_from_output
         output = vm.run_powershell(r"""
 $ErrorActionPreference='Stop'
 $s=Get-MpComputerStatus; $p=Get-MpPreference
@@ -98,7 +94,6 @@ if(-not (Test-Path -LiteralPath $exe)){$exe=$null}
         pid = None
         response = None
         try:
-            from pipeline.vmrun_pipeline import json_document_from_output
             vm.create_directory(root)
             vm.create_directory(root + "\\input")
             vm.copy_to_guest(Path(artifact["path"]), source)

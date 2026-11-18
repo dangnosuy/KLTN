@@ -1,8 +1,9 @@
 {
-  "name": "flatten-encode-split",
+  "name": "flatten-encode-split-literals",
   "steps": [
     {"operator": "flatten", "seed": 101},
     {"operator": "encode_arithmetic", "seed": 102},
-    {"operator": "split", "seed": 103}
+    {"operator": "split", "seed": 103},
+    {"operator": "encode_literals", "seed": 104}
   ]
 }

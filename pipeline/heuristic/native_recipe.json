@@ -1,0 +1,10 @@
+{
+  "name": "native-evasion-chain",
+  "steps": [
+    {"operator": "dynamic_api", "seed": 101},
+    {"operator": "benign_workload", "seed": 102},
+    {"operator": "benign_iat", "seed": 103},
+    {"operator": "opaque_predicate", "seed": 104},
+    {"operator": "clean_strip", "seed": 105}
+  ]
+}
