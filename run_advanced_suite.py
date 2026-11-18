@@ -17,7 +17,7 @@ RESULTS_DIR = ROOT / "baseline_results/advanced"
 POOL = ROOT / "pipeline/mutators/native_pool.json"
 RECIPE = ROOT / "pipeline/heuristic/native_recipe.json"
 SCORE_CMD = f"{PYTHON} -m pipeline.ga_only.static_score {{source}} --engines clamav,ember,malconv"
-MODEL = "nvidia/poolside/laguna-xs-2.1"
+MODEL = "cf/@cf/qwen/qwen3.8-27b"
 
 SAMPLES = [
     ROOT / "dataset/advanced/sources/baseline/unhook_exec_xor.c",

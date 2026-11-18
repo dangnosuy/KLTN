@@ -21,7 +21,7 @@ class OpenAICompatibleClient:
         model: str,
         base_url: str = "http://127.0.0.1:20128/v1",
         timeout: int = 300,
-        max_tokens: int = 16384,
+        max_tokens: int = 4096,
         reasoning_effort: str = "low",
     ):
         self.model = model
