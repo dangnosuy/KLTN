@@ -410,7 +410,7 @@ You must optimize the C program representation to achieve binary structural norm
 
 [Instructions]
 1. Rewrite the C program to completely eliminate suspicious static imports (e.g. VirtualAlloc, CreateThread, WaitForSingleObject) using dynamic API resolution via GetProcAddress/LoadLibraryA.
-2. Insert a realistic auxiliary workload function (matrix computation, CRC32/checksum calculation) invoked from main to normalize PE feature distributions and lower classifier anomaly score.
+2. Insert a realistic auxiliary workload function (matrix computation, or CRC32/checksum on a local dummy buffer, never referencing undeclared variables) invoked from main to normalize PE feature distributions and lower classifier anomaly score.
 3. Obfuscate literal API name strings (e.g. stack strings or local byte-wise decoding).
 4. Strictly preserve the original payload byte sequence, headers, and execution semantics.
 5. Return your complete C program inside a single ```c code block.
@@ -427,7 +427,7 @@ You must optimize the C program representation to achieve binary structural norm
 ```
 """
         try:
-            response = self.generate(PROPOSED_LLM_SYSTEM, prompt, 0.7)
+            response = self.generate(PROPOSED_LLM_SYSTEM, prompt, 0.2)
             # Check if LLM returned direct C code block (Option A)
             if "```c" in response:
                 custom_code = extract_c_code(response)

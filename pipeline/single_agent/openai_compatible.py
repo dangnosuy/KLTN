@@ -20,7 +20,7 @@ class OpenAICompatibleClient:
         self,
         model: str,
         base_url: str = "http://127.0.0.1:20128/v1",
-        timeout: int = 300,
+        timeout: int = 45,
         max_tokens: int = 4096,
         reasoning_effort: str = "low",
     ):
@@ -68,21 +68,40 @@ class OpenAICompatibleClient:
             }
 
     def generate(self, system: str, user: str, temperature: float) -> str:
-        response = self._request("/chat/completions", {
-            "model": self.model,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-            "stream": False,
-            "temperature": temperature,
-            "max_tokens": self.max_tokens,
-            "reasoning_effort": self.reasoning_effort,
-        })
-        if response.get("error"):
-            raise RuntimeError(f"LLM API error: {response['error']}")
-        choices = response.get("choices")
-        content = choices[0].get("message", {}).get("content") if isinstance(choices, list) and choices else None
-        if not isinstance(content, str) or not content.strip():
-            raise RuntimeError("LLM API returned no message content")
-        return content
+        models_to_try = [self.model]
+        for fallback in (
+            "cf/@cf/qwen/qwen2.5-coder-32b-instruct",
+            "ag/claude-sonnet-4-6",
+            "cf/@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+            "nvidia/poolside/laguna-xs-2.1",
+        ):
+            if fallback not in models_to_try:
+                models_to_try.append(fallback)
+
+        last_error = None
+        for model_name in models_to_try:
+            try:
+                payload = {
+                    "model": model_name,
+                    "messages": [
+                        {"role": "system", "content": system},
+                        {"role": "user", "content": user},
+                    ],
+                    "stream": False,
+                    "temperature": temperature,
+                    "max_tokens": self.max_tokens,
+                }
+                if "qwen" in model_name:
+                    payload["reasoning_effort"] = self.reasoning_effort
+                response = self._request("/chat/completions", payload)
+                if response.get("error"):
+                    raise RuntimeError(f"LLM API error: {response['error']}")
+                choices = response.get("choices")
+                content = choices[0].get("message", {}).get("content") if isinstance(choices, list) and choices else None
+                if isinstance(content, str) and content.strip():
+                    return content
+            except Exception as error:
+                last_error = error
+                continue
+
+        raise RuntimeError(f"All LLM candidate models failed: {last_error}")
