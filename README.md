@@ -1,129 +1,136 @@
-# Unified Multi-Layer Malware Detection Pipeline
+# Adaptive Program Transformation & Robustness Evaluation Pipeline
 
-> Cụm detector chính hiện tại: **EMBER, MalConv, ClamAV, Defender CLI offline
-> (chỉ static) và CAPE behavior (ngưỡng 4)**. Chạy bằng
-> `python3 -m pipeline.detectors`; xem [hướng dẫn mới](detectors/README.md).
-> Các phần bên dưới mô tả pipeline cũ, được giữ lại để tương thích/tham khảo.
-
-Hệ thống đánh giá tự động đa tầng (Multi-Layer Detection Pipeline) kết hợp 3 lớp phòng thủ và 8 detector engines:
-- **Layer 1: Signature-Based**: ClamAV, YARA rules.
-- **Layer 2: ML-Based**: SOREL-20M (PyTorch DNN), EMBER 2024 (LightGBM PE Tree), MalConv (Raw Byte CNN).
-- **Layer 3: Dynamic EDR**: Elastic Defend EDR, Wazuh EDR (Sysmon).
-- **Windows Defender Suite**: Host AV/EDR nguyên khối (Stage 1: Treo đĩa 10s quét tĩnh on-access -> Stage 2: Kích nổ sandbox 20s quét hành vi runtime).
+> **Khóa luận Tốt nghiệp / Nghiên cứu Khoa học**: *Adaptive Program Transformation for Robustness Evaluation of Malware Detection Systems*  
+> **Cụm Động cơ Đánh giá chính**: **ClamAV, EMBER, MalConv, Windows Defender CLI, và CAPE Sandbox 2.5**.  
+> **Đóng góp chính (Contributions)**:
+> 1. **C1 - Behavior Verifier & 35-Sample Dataset**: Bộ kiểm chứng hành vi 3 trạng thái (`BUILD_FAIL`, `UNDETERMINED`, `PASSED_TEST`) ngăn ngừa né tránh ảo (False Positive Evasion) và tập 35 mẫu C chuẩn MITRE ATT&CK.
+> 2. **C2 - Proposed Optimization Framework**: Bộ điều phối chi phí nhận thức (C2 Coordinator) + Tối ưu đa mục tiêu (NSGA-II) + Phản hồi ngữ nghĩa (Semantic Reflexion qua Qwen 3.8-27b).
 
 ---
 
-## Kiến trúc hệ thống
+## 1. Kiến trúc Tổng thể Hệ thống
 
 ```
-                          [ python3 pipeline/run_pipeline.py <file_or_dir> ]
-                                                  │
-         ┌────────────────────────────────────────┴────────────────────────────────────────┐
-         ▼                                                                                 ▼
-  [ Phase 1 & 2: Local Linux Engines ]                                    [ Phase 3: Windows VM Evaluation ]
-    ├─ ClamAV (clamscan)                                                    ├─ Copy file -> shared_payloads/
-    ├─ YARA (yara_scan_all.py)                                              │
-    ├─ SOREL-20M (Sophos PyTorch)                                           ▼
-    ├─ EMBER 2024 (LightGBM PE Tree)                              [ unified_win_agent.py trên Windows VM ]
-    └─ MalConv (Raw-Byte CNN)                                       ├─ Stage 1: Treo đĩa 10s (chờ Defender On-Access Static)
-                                                                    │    └─ Quarantined? Báo cáo ngay & Dừng.
-                                                                    └─ Stage 2: Kích nổ Sandbox C:\Elastic_Testing (20s)
-                                                                         ├─ Rải 4 decoy files, monitor child procs, net conns
-                                                                         ├─ Bắt Defender Runtime Behavior (Event 1116/1117)
-                                                                         └─ POST /api/v1/behavior_report
-                                                                    ▼
-                                                        [ unified_server.py trên Linux (Port 8002) ]
-                                                          ├─ Tiếp nhận Windows Defender & telemetry logs
-                                                          ├─ Background Worker: Polling song song:
-                                                          │    ├─ Elasticsearch (Port 9201, Elastic Defend)
-                                                          │    └─ Wazuh OpenSearch (Port 9200, Sysmon/Wazuh)
-                                                          └─ Cập nhật session cache theo SHA256
-                                                                    │
-         ┌──────────────────────────────────────────────────────────┘
-         ▼
-  [ Pipeline Correlator ]
-    └─ Gộp toàn bộ kết quả thành 1 file JSON chuẩn hóa:
-       pipeline/reports/<filename>_<sha256[:8]>.json
+[35 Mẫu C Dataset / sources/dataset/] ───────────────┐
+                                                      ▼
+                                       ┌─────────────────────────────┐
+                                       │    THUẬT TOÁN BIẾN ĐỔI      │
+                                       │ - Heuristic / MAB Bandit     │
+                                       │ - Genetic Algorithm (GA)    │
+                                       │ - Fixed Hybrid (GA + LLM)   │
+                                       │ - PROPOSED (C2 + NSGA-II)   │
+                                       └──────────────┬──────────────┘
+                                                      │ (Sinh biến thể C)
+                                                      ▼
+                                       ┌─────────────────────────────┐
+                                       │ C1: BEHAVIOR VERIFIER GATE  │
+                                       │ 1. Biên dịch chéo MinGW-w64 │
+                                       │ 2. Sandbox (VM / Wine)      │
+                                       │ 3. Check CRC32 c1_proof.txt │
+                                       └──────────────┬──────────────┘
+                                                      │
+                       ┌──────────────────────────────┴──────────────────────────────┐
+                       ▼                                                             ▼
+           [BUILD_FAIL / UNDETERMINED]                                         [PASSED_TEST]
+              (Crash, Loop, Lỗi ASM)                                       (100% Bảo toàn hành vi)
+                       │                                                             │
+                       ▼                                                             ▼
+                Fitness = 0.0                                          [Đưa vào 4-5 Detector Engines]
+           (Đào thải ngay lập tức,                                       ├─ ClamAV (Chữ ký truyền thống)
+            không truy vấn detector)                                     ├─ EMBER 2024 (LightGBM PE Tree)
+                                                                         ├─ MalConv (Raw-byte CNN)
+                                                                         └─ CAPE Sandbox (Dynamic score)
+                                                                                     │
+                                                                                     ▼
+                                                                        [Đa mục tiêu Pareto Front]
+                                                                        Fitness cao nhất + Gọn nhất
 ```
 
 ---
 
-## Hướng dẫn vận hành
+## 2. Cấu trúc Thư mục
 
-### 1. Khởi động Listener Server (Linux Host)
-Chạy server hợp nhất trên port `8002`:
-```bash
-python3 pipeline/unified_server.py
-```
-
-### 2. Khởi động Agent trên Windows Guest VM
-Copy file `pipeline/unified_win_agent.py` sang máy Windows VM và chạy với quyền **Administrator**:
-```powershell
-python unified_win_agent.py
-```
-
-### 3. Chạy Pipeline đánh giá mẫu thử (Linux Host)
-
-- **Đánh giá 1 mẫu thử đầy đủ (cả 3 layers: Static + ML + VM Behavior)**:
-  ```bash
-  python3 pipeline/run_pipeline.py dataset/advanced/build/crt_inject.exe
-  ```
-
-- **Đánh giá 1 thư mục chứa nhiều file `.exe` tuần tự tự động**:
-  ```bash
-  python3 pipeline/run_pipeline.py dataset/advanced/build/
-  ```
-
-- **Chỉ chạy Layer 1 & 2 cục bộ trên Linux (bỏ qua Windows VM)**:
-  ```bash
-  python3 pipeline/run_pipeline.py dataset/advanced/build/crt_inject.exe --skip-behavior
-  ```
-
-### 4. Kết quả đầu ra
-Mỗi mẫu thử tạo ra một file JSON duy nhất tại `pipeline/reports/<filename>_<sha256[:8]>.json`:
-- `metadata`: Tên file, SHA256, MD5, dung lượng, thời điểm quét.
-- `layer1_signature`: ClamAV, YARA.
-- `layer2_machine_learning`: SOREL-20M score & tags, EMBER 2024 score, MalConv raw prediction.
-- `layer3_behavior`: Telemetry thực thi, Elastic Defend EDR alerts, Wazuh EDR (Sysmon) alerts.
-- `windows_defender`: Báo cáo hợp nhất (detected, stage: STATIC/BEHAVIOR/NONE, status, threat_name, events).
-- `summary`: Tỉ lệ bypass, tổng số engine phát hiện / né tránh (trên 8 engines), và verdict tổng thể (`FULLY_EVADED`, `HIGHLY_EVASIVE`, `PARTIALLY_EVADED`, `BLOCKED`).
+- `sources/dataset/`: 35 mẫu C chuẩn chia đều vào 7 nhóm kỹ thuật MITRE ATT&CK:
+  - `g1_process_injection`: Local Thread, Remote Thread, Early Bird APC, Local Section, Fiber Injection.
+  - `g2_execution_hijacking`: DLL Search Order, VEH Hijack, COM Hijack, URL Protocol, IFEO Debugger.
+  - `g3_api_hook_evasion`: PEB API Resolve, Hash DJB2, Hash CRC32, Hash Jenkins, Hash ROTR32.
+  - `g4_anti_analysis`: PEB Debugger, PEB NtGlobalFlag, RDTSC Timing, Sleep Acceleration, CPUID Hypervisor.
+  - `g5_recon_scraping`: Process Enum (TH32/PSAPI), SysInfo, NetAdapter Discovery, Registry OS Query.
+  - `g6_c2_network`: HTTP WinINet (GET/POST), HTTP WinHTTP, TCP Winsock, UDP Winsock.
+  - `g7_benign_controls`: File CRUD, Matrix Benchmark, Thread Pool, SHA256 Hash, Memory Monitor.
+  - `shared/c1_proof.h`: Thư viện tính và ghi canary proof token dạng `SAMPLE_ID|TECHNIQUE|TIMESTAMP|CRC32`.
+- `sources/verifier/`: Công cụ kiểm chứng độc lập cross-platform (`verifier.py`, `verifier.ps1`, `test_verifier.ps1`).
+- `sources/pipeline/`: `vmrun_verifier.py` (điều khiển kiểm chứng tự động qua VMware Workstation hoặc isolated Wine sandbox) và `mock_c2_server.py`.
+- `pipeline/proposed/`: Thuật toán Proposed Method (`C2 Coordinator` + `NSGA-II` đa mục tiêu + `Qwen 3.8-27b Reflexion`).
+- `pipeline/ga_only/`: Baseline Genetic Algorithm thuần túy và module tính điểm `static_score.py` (tích hợp Verifier gate).
+- `pipeline/bandit/`: Baseline Multi-Armed Bandit (Thompson Sampling).
+- `pipeline/hybrid_fixed/`: Baseline lai ghép cố định (EoH-inspired GA + LLM).
+- `pipeline/single_agent/`: Baseline Single-Agent Reflexion.
+- `baseline_results/comprehensive_matrix/`: Bảng dữ liệu kết quả thực nghiệm toàn diện dạng JSON, CSV và TSV.
 
 ---
 
-## Direct VMRun Pipeline
+## 3. Bảng Kết quả Thực nghiệm Toàn diện (Baselines vs Proposed)
 
-`vmrun_pipeline.py` là pipeline dynamic mới, không dùng SMB share hoặc Windows Python watcher. Nó chạy theo engine-major và revert từng sample về golden snapshot: `elastic`, `wazuh`, `normal_real`. Snapshot `normal_real` bắt buộc Windows Defender; Sysmon được thu thập nếu có nhưng không bắt buộc.
+Toàn bộ kết quả thực nghiệm đối đầu trên các nhóm kỹ thuật C1 với cổng Behavior Verifier:
 
-Hướng dẫn vận hành đầy đủ, bao gồm môi trường, input/output, tham số CLI, kết quả và xử lý lỗi: [VMRUN_PIPELINE_OPERATION_GUIDE.md](VMRUN_PIPELINE_OPERATION_GUIDE.md).
+| Target ID | MITRE Group / Kỹ thuật | Phương pháp | Fitness | EMBER Score | ClamAV | MalConv | Behavior Verifier (C1) | Đánh giá |
+|---|---|---|---|---|---|---|---|---|
+| **`g3_02_hash_djb2`** | API Hook Evasion (TA0005) | **Original (Ground Truth)** | 0.8016 | 0.5951 | NO_ALERT | 1.70E-11 | **PASSED_TEST** | Gốc |
+| | | Multi-Armed Bandit (MAB) | **0.8320** | **0.5039** | NO_ALERT | 1.76E-11 | **PASSED_TEST** | Cải thiện |
+| | | Genetic Algorithm (GA-Only) | **0.8320** | **0.5039** | NO_ALERT | 1.76E-11 | **PASSED_TEST** | Cải thiện |
+| | | Fixed Hybrid (GA + LLM) | **0.8320** | **0.5039** | NO_ALERT | 1.76E-11 | **PASSED_TEST** | Cải thiện |
+| | | **Proposed (C2 + NSGA-II + Qwen)** | **0.8320** | **0.5039** | NO_ALERT | 1.76E-11 | **PASSED_TEST** | **Tối ưu Pareto** (0% phình) |
+| **`g4_01_peb_debugger`** | Anti-Analysis (TA0005) | **Original (Ground Truth)** | 0.7388 | 0.7836 | NO_ALERT | 5.87E-13 | **PASSED_TEST** | Gốc |
+| | | Multi-Armed Bandit (MAB) | 0.0000 | 1.0000 | NO_ALERT | N/A | `FAIL` | Bị loại |
+| | | Genetic Algorithm (GA-Only) | 0.0000 | 1.0000 | NO_ALERT | N/A | `UNDETERMINED` | Bị loại |
+| | | Fixed Hybrid (GA + LLM) | 0.0000 | 1.0000 | NO_ALERT | N/A | `UNDETERMINED` | Bị loại |
+| | | Proposed (C2 + NSGA-II + Qwen) | 0.0000 | 1.0000 | NO_ALERT | N/A | `UNDETERMINED` | Bị loại |
+| **`g7_01_file_crud`** | Benign Control (System CRUD) | **Original (Ground Truth)** | 0.7261 | 0.8218 | NO_ALERT | 1.25E-09 | **PASSED_TEST** | Gốc |
+| | | Multi-Armed Bandit (MAB) | 0.0000 | 1.0000 | NO_ALERT | N/A | `FAIL` | Bị loại |
+| | | Genetic Algorithm (GA-Only) | 0.0000 | 1.0000 | NO_ALERT | N/A | `UNDETERMINED` | Bị loại |
+| | | Fixed Hybrid (GA + LLM) | 0.0000 | 1.0000 | NO_ALERT | N/A | `FAIL` | Bị loại |
+| | | **Proposed (C2 + NSGA-II + Qwen)** | **0.7087** | 0.8740 | NO_ALERT | 3.29E-11 | **PASSED_TEST** | **Duy nhất sống sót** (-1.76% size) |
 
-Tạo file environment riêng từ `pipeline/vmrun.env.example`, điền credential và không commit file đó. Sau đó chạy kiểm tra hạ tầng trước; lệnh này sẽ lần lượt revert các snapshot để kiểm tra VMware Tools, guest services, clock skew và backend health:
+*Tệp định dạng bảng tính đã được kết xuất sẵn tại:*
+- CSV: `baseline_results/comprehensive_matrix/benchmark_results.csv`
+- TSV: `baseline_results/comprehensive_matrix/benchmark_results.tsv`
+- JSON: `baseline_results/comprehensive_matrix/comprehensive_summary.json`
 
+---
+
+## 4. Hướng dẫn Chạy Thử nghiệm
+
+### 1. Kích hoạt môi trường Python ML
 ```bash
-set -a; source /path/to/vmrun.env; set +a
-python3 pipeline/vmrun_pipeline.py doctor --campaign thesis-r01
+source ~/Documents/venv/bin/activate
 ```
 
-Doctor cũng từ chối snapshot `elastic`/`wazuh` nếu Windows Defender còn bật, vì alert hoặc quarantine của Defender sẽ làm sai attribution. Với Wazuh, `ossec.conf` phải subscribe channel `Microsoft-Windows-Sysmon/Operational`. CLI trả exit code khác 0 nếu bất kỳ readiness gate hoặc job nào lỗi, sau khi đã lưu report để điều tra.
-
-Sysmon Event ID 8 mặc định chỉ tạo Wazuh alert mức 0 cho nhiều target. Để benchmark process injection vào Notepad có alert truy vấn được, cài rule `100203` trên Wazuh manager rồi kiểm tra cấu hình trước khi restart:
-
+### 2. Chạy kiểm thử toàn bộ Unit Test (Hermetic & Mock-based)
 ```bash
-sudo install -o wazuh -g wazuh -m 660 \
-  Wazuh-Defend/rules/100203_process_injection.xml \
-  /var/ossec/etc/rules/100203_process_injection.xml
-sudo /var/ossec/bin/wazuh-analysisd -t
-sudo systemctl restart wazuh-manager
+python3 -m unittest discover -s pipeline/tests -p 'test_*.py'
 ```
 
-Không cài file riêng nếu rule ID `100203` đã được merge vào `/var/ossec/etc/rules/local_rules.xml`, vì Wazuh không chấp nhận trùng rule ID.
-
-Chạy batch dynamic với thứ tự cố định có thể tái lập:
-
+### 3. Kiểm chứng 1 mẫu đơn lẻ qua Behavior Verifier
 ```bash
-python3 pipeline/vmrun_pipeline.py run dataset/advanced/build \
-  --campaign thesis-r01 \
-  --engines elastic,wazuh,defender \
-  --shuffle-seed 23520146
+# Kiểm chứng trực tiếp qua module vmrun_verifier
+python3 sources/pipeline/vmrun_verifier.py --sample g3_02_hash_djb2
+
+# Hoặc chấm điểm tích hợp cùng 3 detector tĩnh
+python3 -m pipeline.ga_only.static_score sources/dataset/g3_api_hook_evasion/g3_02_hash_djb2.c --engines clamav,ember,malconv
 ```
 
-Kết quả, raw Defender evidence và `state.json` được lưu tại `pipeline/vmrun_reports/<campaign>/`. Chạy lại cùng campaign sẽ bỏ qua duy nhất các `(engine, SHA256)` đã `COMPLETED`; job lỗi sẽ revert và thử lại ở lần sau.
+### 4. Chạy Thuật toán Proposed Method trên mẫu mới
+```bash
+python3 -m pipeline.proposed run sources/dataset/g3_api_hook_evasion/g3_02_hash_djb2.c \
+  --pool pipeline/mutators/native_pool.json \
+  --output baseline_results/proposed_run/ \
+  --score-command "python3 -m pipeline.ga_only.static_score {source} --engines clamav,ember,malconv" \
+  --population-size 4 --generations 2 --model "cf/@cf/qwen/qwen3.8-27b"
+```
+
+### 5. Chạy So sánh Toàn diện (Comprehensive Benchmark Runner)
+```bash
+python3 run_comprehensive_matrix.py
+```
+
