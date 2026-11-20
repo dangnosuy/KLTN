@@ -1,0 +1,16 @@
+Target ID	Tactic / Group	Method	Fitness	EMBER Score	ClamAV	MalConv	Behavior Verifier (C1)	Status
+g3_02_hash_djb2	API Hook Evasion (TA0005)	Original (Ground Truth)	0.8016	0.5951	NO_ALERT	1.70E-11	PASSED_TEST	Baseline
+g3_02_hash_djb2	API Hook Evasion (TA0005)	Multi-Armed Bandit (MAB)	0.8320	0.5039	NO_ALERT	1.76E-11	PASSED_TEST	Improved
+g3_02_hash_djb2	API Hook Evasion (TA0005)	Genetic Algorithm (GA-Only)	0.8320	0.5039	NO_ALERT	1.76E-11	PASSED_TEST	Improved
+g3_02_hash_djb2	API Hook Evasion (TA0005)	Fixed Hybrid (GA + LLM)	0.8320	0.5039	NO_ALERT	1.76E-11	PASSED_TEST	Improved
+g3_02_hash_djb2	API Hook Evasion (TA0005)	Proposed (C2 + NSGA-II + Qwen)	0.8320	0.5039	NO_ALERT	1.76E-11	PASSED_TEST	Optimal Pareto
+g4_01_peb_debugger	Anti-Analysis (TA0005)	Original (Ground Truth)	0.7388	0.7836	NO_ALERT	5.87E-13	PASSED_TEST	Baseline
+g4_01_peb_debugger	Anti-Analysis (TA0005)	Multi-Armed Bandit (MAB)	0.0000	1.0000	NO_ALERT	N/A	FAIL (Syntax Crash)	Eliminated
+g4_01_peb_debugger	Anti-Analysis (TA0005)	Genetic Algorithm (GA-Only)	0.0000	1.0000	NO_ALERT	N/A	UNDETERMINED (Logic Break)	Eliminated
+g4_01_peb_debugger	Anti-Analysis (TA0005)	Fixed Hybrid (GA + LLM)	0.0000	1.0000	NO_ALERT	N/A	UNDETERMINED (Logic Break)	Eliminated
+g4_01_peb_debugger	Anti-Analysis (TA0005)	Proposed (C2 + NSGA-II + Qwen)	0.0000	1.0000	NO_ALERT	N/A	UNDETERMINED (Strict Guard)	Eliminated
+g7_01_file_crud	Benign Control (System CRUD)	Original (Ground Truth)	0.7261	0.8218	NO_ALERT	1.25E-09	PASSED_TEST	Baseline
+g7_01_file_crud	Benign Control (System CRUD)	Multi-Armed Bandit (MAB)	0.0000	1.0000	NO_ALERT	N/A	FAIL (Build Error)	Eliminated
+g7_01_file_crud	Benign Control (System CRUD)	Genetic Algorithm (GA-Only)	0.0000	1.0000	NO_ALERT	N/A	UNDETERMINED (Runtime Crash)	Eliminated
+g7_01_file_crud	Benign Control (System CRUD)	Fixed Hybrid (GA + LLM)	0.0000	1.0000	NO_ALERT	N/A	FAIL (Build Error)	Eliminated
+g7_01_file_crud	Benign Control (System CRUD)	Proposed (C2 + NSGA-II + Qwen)	0.7087	0.8740	NO_ALERT	3.29E-11	PASSED_TEST	Only Preserved

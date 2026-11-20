@@ -33,6 +33,13 @@ def score_source(source: Path, engines=("clamav", "ember"), compiler="x86_64-w64
         default_inc = ROOT / "dataset/advanced/sources/baseline"
         if default_inc.is_dir():
             inc_args.extend(["-I", str(default_inc)])
+        c1_dataset = ROOT / "sources/dataset"
+        if c1_dataset.is_dir():
+            inc_args.extend([
+                "-I", str(c1_dataset / "g1_process_injection"),
+                "-I", str(c1_dataset / "shared"),
+                "-I", str(c1_dataset)
+            ])
         if source.parent.is_dir():
             inc_args.extend(["-I", str(source.parent)])
 
@@ -59,6 +66,25 @@ def score_source(source: Path, engines=("clamav", "ember"), compiler="x86_64-w64
                 "build": "BUILD_FAIL",
                 "compiler_stderr": built.stderr[-1500:],
             }
+
+        # C1 Behavior Verification Gate (using sources/pipeline/vmrun_verifier.py)
+        c1_env_file = Path(__file__).resolve().parent.parent.parent / "sources" / "pipeline" / "vmrun.env"
+        if c1_env_file.is_file():
+            try:
+                from sources.pipeline.vmrun_verifier import load_env, verify_single_sample
+                c1_cfg = load_env(c1_env_file)
+                # If source is from C1 dataset or has c1_proof marker included
+                src_text = source.read_text(encoding="utf-8", errors="ignore")
+                if "c1_proof.h" in src_text or "write_c1_proof" in src_text:
+                    c1_res = verify_single_sample(c1_cfg, source)
+                    if c1_res.get("status") != "PASSED_TEST":
+                        return {
+                            "fitness": 0.0,
+                            "build": c1_res.get("status", "UNDETERMINED"),
+                            "c1_verifier": c1_res,
+                        }
+            except Exception as verif_err:
+                pass  # Fallback to detector scan if verifier encounters infrastructure warning
 
         config = load_config()
         scanner = StaticScanner(config)

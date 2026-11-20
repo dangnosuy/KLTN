@@ -20,6 +20,7 @@ huntress_backup_codes.txt
 
 # Run logs and test outputs
 *.log
+build/
 pipeline/reports/
 pipeline/vmrun_reports/
 pipeline/runtime/
@@ -27,7 +28,12 @@ heuristic-output/
 bandit-output/
 ga-output/
 single-agent-output/
-baseline_results/
+baseline_results/*
+!baseline_results/comprehensive_matrix
+baseline_results/comprehensive_matrix/*
+!baseline_results/comprehensive_matrix/benchmark_results.csv
+!baseline_results/comprehensive_matrix/benchmark_results.tsv
+!baseline_results/comprehensive_matrix/comprehensive_summary.json
 hybrid-fixed-output/
 
 # Graphify & Large binaries

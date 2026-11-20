@@ -1,0 +1,89 @@
+{
+  "g3_02_hash_djb2": {
+    "technique": "PEB Walk & DJB2 API Hash Resolution",
+    "group": "g3_api_hook_evasion",
+    "original": {
+      "fitness": 0.8016400710920205,
+      "ember": 0.5950797866086659,
+      "build": "PASSED"
+    },
+    "bandit": {
+      "fitness": 0.8320178648167964,
+      "ember": 1.0,
+      "build": "PASSED"
+    },
+    "ga_only": {
+      "fitness": 0.8320178648167964,
+      "ember": 0.5039464055320467,
+      "build": "PASSED"
+    },
+    "hybrid_fixed": {
+      "fitness": 0.8320178648167964,
+      "ember": 0.5039464055320467,
+      "build": "PASSED"
+    },
+    "proposed": {
+      "fitness": 0.8320178648167964,
+      "ember": 0.5039464055320467,
+      "build": "PASSED"
+    }
+  },
+  "g4_01_peb_debugger": {
+    "technique": "PEB BeingDebugged Anti-Analysis",
+    "group": "g4_anti_analysis",
+    "original": {
+      "fitness": 0.7387849658587428,
+      "ember": 0.7836451023564369,
+      "build": "PASSED"
+    },
+    "bandit": {
+      "fitness": 0.0,
+      "ember": 1.0,
+      "build": "FAIL"
+    },
+    "ga_only": {
+      "fitness": 0.0,
+      "ember": 1.0,
+      "build": "UNDETERMINED"
+    },
+    "hybrid_fixed": {
+      "fitness": 0.0,
+      "ember": 1.0,
+      "build": "UNDETERMINED"
+    },
+    "proposed": {
+      "fitness": 0.0,
+      "ember": 1.0,
+      "build": "UNDETERMINED"
+    }
+  },
+  "g7_01_file_crud": {
+    "technique": "Benign System File CRUD Control",
+    "group": "g7_benign_controls",
+    "original": {
+      "fitness": 0.7260724922329905,
+      "ember": 0.8217825210843324,
+      "build": "PASSED"
+    },
+    "bandit": {
+      "fitness": 0.0,
+      "ember": 1.0,
+      "build": "FAIL"
+    },
+    "ga_only": {
+      "fitness": 0.0,
+      "ember": 1.0,
+      "build": "UNDETERMINED"
+    },
+    "hybrid_fixed": {
+      "fitness": 0.0,
+      "ember": 1.0,
+      "build": "FAIL"
+    },
+    "proposed": {
+      "fitness": 0.7086530075093291,
+      "ember": 0.8740409760545009,
+      "build": "PASSED"
+    }
+  }
+}
